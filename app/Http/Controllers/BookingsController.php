@@ -37,21 +37,29 @@ class BookingsController extends Controller
         return view('add')->with('bookings', $bookings);
 
     }
+
+    //TODO FALTA VALIDAR QUE UN MISMO USUARIO NO PUEDA RESERVAR MÁS DE UNA VEZ EN UN MISMO DÍA.
     //TODO Ordena las validaciones conforme a un criterio lógico, ej. primero las sencillas, luego las más complejas para evitar sobrecarga.
-    //TODO Seguir creando las validaciones e ir quitando IFS.
+
     public function create(Request $request)
     {
 
         $this->validate($request, [
-            'start_time' => ['required', 'date', 'after:now', new BookingPersonLimit($request->user_id), new BookingWeeklyLimit(), new BookingTimeLimit($request->end_time), new BookingOverlap(), new BookingAvailableScheudle],
-            'end_time' => ['required', 'date', 'after:start_time', new BookingOverlap(), new BookingAvailableScheudle, new BookingWeeklyLimit]
+            'start_time' => ['required', 'date', 'after:now', new BookingWeeklyLimit(), new BookingTimeLimit($request->end_time), new BookingOverlap(), new BookingAvailableScheudle],
+            'end_time' => ['required', 'date', 'after:start_time', new BookingOverlap(), new BookingAvailableScheudle, new BookingWeeklyLimit],
+            'user_id' =>[new BookingPersonLimit($request->start_time)]
         ]);
+
 
         $booking = new Booking();
         $booking->user_id = auth()->user()->id;
         $booking->start_time = $request->start_time;
         $booking->end_time = $request->end_time;
         /*
+        $allBokings = Booking::find($booking->user_id);
+        if(Booking::find($booking->user_id)->where($booking->start_time>'start_time')->where($booking->end_time<'end_time')->count()==0)
+
+
         $carbonStartDate = Carbon::parse($request->start_time);
         $carbonEndDate = Carbon::parse($request->end_time);
 

@@ -13,10 +13,10 @@ class BookingPersonLimit implements Rule
      *
      * @return void
      */
-    public $user_id;
-    public function __construct($id)
+    public $start_time;
+    public function __construct($startTime)
     {
-        $this->user_id=$id;
+        $this->start_time=$startTime;
     }
 
     /**
@@ -26,13 +26,18 @@ class BookingPersonLimit implements Rule
      * @param  mixed  $value
      * @return bool
      */
+
+    /**
+     * TODO Validación pasa siempre, parece que no llega el user_id
+     */
     public function passes($attribute, $value)
     {
-        $beginningHour = Carbon::create($value);
+        $beginningHour = Carbon::create($this->start_time);
         $beginningHour->subUnitNoOverflow('hour', 25, 'day');
-        $finishingHour =  Carbon::create($value);
+        $finishingHour =  Carbon::create($this->start_time);
         $finishingHour->addUnitNoOverflow('hour', 25, 'day');
-        return Booking::where('id','=',$this->user_id)->count() == 0;
+
+        return Booking::where('id','=',$value)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() == 0;
     }
 
     /**
