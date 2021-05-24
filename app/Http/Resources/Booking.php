@@ -18,8 +18,10 @@ class Booking extends JsonResource
             'id' => $this->id,
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
-            'created_at' => $this->created_at->format('d/m/Y'),
-            'updated_at' => $this->updated_at->format('d/m/Y'),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
+
+    //erased on both created_at ->format('d/m/Y')
 }

@@ -8,7 +8,6 @@ use App\Rules\BookingOverlap;
 use Carbon\Carbon;
 use App\Rules\BookingAvailableScheudle;
 use App\Rules\BookingWeeklyLimit;
-use App\Rules\BookingPersonLimit;
 use App\Rules\BookingTimeLimit;
 use App\Models\User;
 
@@ -45,9 +44,8 @@ class BookingsController extends Controller
     {
 
         $this->validate($request, [
-            'start_time' => ['required', 'date', 'after:now', new BookingWeeklyLimit(), new BookingTimeLimit($request->end_time), new BookingOverlap(), new BookingAvailableScheudle],
-            'end_time' => ['required', 'date', 'after:start_time', new BookingOverlap(), new BookingAvailableScheudle, new BookingWeeklyLimit],
-            'user_id' =>[new BookingPersonLimit($request->start_time)]
+            'start_time' => ['required', 'date', 'after:now', new BookingTimeLimit($request->end_time), new BookingOverlap(), new BookingAvailableScheudle],
+            'end_time' => ['required', 'date', 'after:start_time', new BookingOverlap(), new BookingAvailableScheudle, new BookingWeeklyLimit()]
         ]);
 
 
@@ -55,25 +53,29 @@ class BookingsController extends Controller
         $booking->user_id = auth()->user()->id;
         $booking->start_time = $request->start_time;
         $booking->end_time = $request->end_time;
-        /*
-        $allBokings = Booking::find($booking->user_id);
-        if(Booking::find($booking->user_id)->where($booking->start_time>'start_time')->where($booking->end_time<'end_time')->count()==0)
 
 
-        $carbonStartDate = Carbon::parse($request->start_time);
-        $carbonEndDate = Carbon::parse($request->end_time);
-
-        $beginningHour = Carbon::create($value);
+        $beginningHour = Carbon::create($booking->start_time);
         $beginningHour->subUnitNoOverflow('hour', 25, 'day');
-        $finishingHour =  Carbon::create($value);
+        $beginningHour->addUnitNoOverflow('hour', 9, 'day');
+        $finishingHour =  Carbon::create($booking->end_time);
         $finishingHour->addUnitNoOverflow('hour', 25, 'day');
+        $finishingHour->subUnitNoOverflow('hour', 1, 'day');
 
-        */
 
-        $booking->save();
 
+        if(Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() > 0){
+            $this->message();
+        }else{
+            $booking->save();
+        }
 
         return redirect('/dashboard');
+    }
+
+    public function message()
+    {
+        return 'Superado límite de reservas diarias.';
     }
 
     public function edit(Booking $booking)
@@ -83,6 +85,9 @@ class BookingsController extends Controller
         } else {
             return redirect('/dashboard');
         }
+        $bookings = Booking::all();
+
+        return view('add')->with('bookings', $bookings);
     }
 
     public function update(Request $request, Booking $booking)
@@ -92,12 +97,21 @@ class BookingsController extends Controller
             return redirect('/dashboard');
         } else {
             $this->validate($request, [
-                'start_time' => ['required', 'date', 'after:now', new BookingWeeklyLimit(auth()->user()->id), new BookingTimeLimit($request->end_time), new BookingOverlap(), new BookingAvailableScheudle],
-                'end_time' => ['required', 'date', 'after:start_time', new BookingOverlap(), new BookingAvailableScheudle, new BookingWeeklyLimit]
+                'start_time' => ['required', 'date', 'after:now', new BookingTimeLimit($request->end_time), new BookingAvailableScheudle],
+                'end_time' => ['required', 'date', 'after:start_time', new BookingAvailableScheudle, new BookingWeeklyLimit]
             ]);
             $booking->start_time = $request->start_time;
             $booking->end_time = $request->end_time;
-            $booking->save();
+            $beginningHour = Carbon::create($booking->start_time);
+            $beginningHour->subUnitNoOverflow('hour', 25, 'day');
+            $beginningHour->addUnitNoOverflow('hour', 9, 'day');
+            $finishingHour =  Carbon::create($booking->end_time);
+            $finishingHour->addUnitNoOverflow('hour', 25, 'day');
+            $finishingHour->subUnitNoOverflow('hour', 1, 'day');
+
+            if(Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() < 1 && Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0){
+                $booking->save();
+            }
             return redirect('/dashboard');
         }
     }
