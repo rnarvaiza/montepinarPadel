@@ -78,6 +78,8 @@ class BookingsController extends Controller
         return 'Superado límite de reservas diarias.';
     }
 
+    //TODO Cómo puedo recuperar en el edit TODAS las reservas igual que en el add?
+
     public function edit(Booking $booking)
     {
         if (auth()->user()->id == $booking->user_id) {
@@ -109,7 +111,7 @@ class BookingsController extends Controller
             $finishingHour->addUnitNoOverflow('hour', 25, 'day');
             $finishingHour->subUnitNoOverflow('hour', 1, 'day');
 
-            if(Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() < 1 && Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0){
+            if(Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() <= 1 && Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0){
                 $booking->save();
             }
             return redirect('/dashboard');
