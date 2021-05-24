@@ -19,15 +19,7 @@ class BookingsController extends Controller
         return view('dashboard', compact('bookings'));
     }
 
-    /*
-    public function collection()
-    {
-        $bookings = Bookings::all();
-        var_dump($bookings);
-        exit();
-        return view::make('add')->with(compact('bookings'));
-    }
-    */
+
 
     public function add()
     {
@@ -111,7 +103,10 @@ class BookingsController extends Controller
             $finishingHour->addUnitNoOverflow('hour', 25, 'day');
             $finishingHour->subUnitNoOverflow('hour', 1, 'day');
 
-            if(Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() <= 1 && Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0){
+            //Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() <= 1 && Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0)
+            $userHasBooked = Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->where('id', '!=', $request->id)->count() >= 1;
+            $rangeAlreadyBooked = Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0;
+            if(!$userHasBooked || !$rangeAlreadyBooked){
                 $booking->save();
             }
             return redirect('/dashboard');
