@@ -19,7 +19,7 @@ class BookingsController extends Controller
         return view('dashboard', compact('bookings'));
     }
 
-
+    //On add function we call Booking::all() in order to show all bookings and help user not to overlap with other bookings.
 
     public function add()
     {
@@ -28,24 +28,20 @@ class BookingsController extends Controller
         return view('add')->with('bookings', $bookings);
 
     }
-
-    //TODO FALTA VALIDAR QUE UN MISMO USUARIO NO PUEDA RESERVAR MÁS DE UNA VEZ EN UN MISMO DÍA.
-    //TODO Ordena las validaciones conforme a un criterio lógico, ej. primero las sencillas, luego las más complejas para evitar sobrecarga.
+    //The order of validations to avoid server overload are the detailed below.
 
     public function create(Request $request)
     {
 
         $this->validate($request, [
-            'start_time' => ['required', 'date', 'after:now', new BookingTimeLimit($request->end_time), new BookingOverlap(), new BookingAvailableScheudle],
+            'start_time' => ['required', 'date', 'after:now', new BookingAvailableScheudle, new BookingOverlap() ,new BookingTimeLimit($request->end_time)],
             'end_time' => ['required', 'date', 'after:start_time', new BookingOverlap(), new BookingAvailableScheudle, new BookingWeeklyLimit()]
         ]);
-
 
         $booking = new Booking();
         $booking->user_id = auth()->user()->id;
         $booking->start_time = $request->start_time;
         $booking->end_time = $request->end_time;
-
 
         $beginningHour = Carbon::create($booking->start_time);
         $beginningHour->subUnitNoOverflow('hour', 25, 'day');
@@ -54,12 +50,12 @@ class BookingsController extends Controller
         $finishingHour->addUnitNoOverflow('hour', 25, 'day');
         $finishingHour->subUnitNoOverflow('hour', 1, 'day');
 
+        $userHasBooked = Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() > 0;
 
-
-        if(Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() > 0){
-            $this->message();
-        }else{
+        if(!$userHasBooked){
             $booking->save();
+        }else{
+            $this->message();
         }
 
         return redirect('/dashboard');
@@ -74,15 +70,20 @@ class BookingsController extends Controller
 
     public function edit(Booking $booking)
     {
+
         if (auth()->user()->id == $booking->user_id) {
-            return view('edit', compact('booking'));
+            return view('edit', compact('booking') );
         } else {
             return redirect('/dashboard');
         }
+        /*
         $bookings = Booking::all();
 
         return view('add')->with('bookings', $bookings);
+        */
     }
+
+
 
     public function update(Request $request, Booking $booking)
     {
@@ -91,7 +92,7 @@ class BookingsController extends Controller
             return redirect('/dashboard');
         } else {
             $this->validate($request, [
-                'start_time' => ['required', 'date', 'after:now', new BookingTimeLimit($request->end_time), new BookingAvailableScheudle],
+                'start_time' => ['required', 'date', 'after:now',  new BookingAvailableScheudle, new BookingTimeLimit($request->end_time)],
                 'end_time' => ['required', 'date', 'after:start_time', new BookingAvailableScheudle, new BookingWeeklyLimit]
             ]);
             $booking->start_time = $request->start_time;
@@ -103,7 +104,6 @@ class BookingsController extends Controller
             $finishingHour->addUnitNoOverflow('hour', 25, 'day');
             $finishingHour->subUnitNoOverflow('hour', 1, 'day');
 
-            //Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() <= 1 && Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0)
             $userHasBooked = Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->where('id', '!=', $request->id)->count() >= 1;
             $rangeAlreadyBooked = Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0;
             if(!$userHasBooked || !$rangeAlreadyBooked){

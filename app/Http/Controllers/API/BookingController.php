@@ -23,12 +23,14 @@ class BookingController extends BaseController
         return $this->sendResponse(BookingResource::collection($bookings), 'bookings fetched.');
     }
 
+    //The order of validations to avoid server overload are the detailed below.
+
     public function store(Request $request)
     {
         $input = $request->all();
         $validator = Validator::make($input, [
-            'start_time' => ['required', 'date', 'after:now', new BookingOverlap(), new BookingAvailableScheudle, new BookingTimeLimit($request->end_time)],
-            'end_time' => ['required','date','after:start_time', new BookingWeeklyLimit(), new BookingOverlap(), new BookingAvailableScheudle]
+            'start_time' => ['required', 'date', 'after:now', new BookingAvailableScheudle, new BookingOverlap(), new BookingTimeLimit($request->end_time)],
+            'end_time' => ['required','date','after:start_time', new BookingOverlap(), new BookingAvailableScheudle, new BookingWeeklyLimit()]
         ]);
 
         if ($validator->fails()){
@@ -45,8 +47,10 @@ class BookingController extends BaseController
         $finishingHour =  Carbon::create($booking->end_time);
         $finishingHour->addUnitNoOverflow('hour', 25, 'day');
         $finishingHour->subUnitNoOverflow('hour', 1, 'day');
-        //TODO implementar elseif para levantar los dos errores por diferente causa
-        if(Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() > 0){
+
+        $userHasBooked = Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() > 0;
+
+        if($userHasBooked){
             return $this->sendResponse(new BookingResource($booking), 'Has superado el límite de reservas diarias');
         }else{
             $booking->save();
@@ -65,11 +69,13 @@ class BookingController extends BaseController
         return $this->sendResponse(new BookingResource($booking), 'Reservas recuperadas');
     }
 
+    //On update function we're trying to manage the same concurrency of validation methods to avoid overload.
+
     public function update(Request $request, Booking $booking)
     {
         $input = $request->all();
         $validator = Validator::make($input, [
-            'start_time' => ['required', 'date', 'after:now', new BookingTimeLimit($request->end_time), new BookingAvailableScheudle],
+            'start_time' => ['required', 'date', 'after:now', new BookingAvailableScheudle, new BookingTimeLimit($request->end_time)],
             'end_time' => ['required', 'date', 'after:start_time', new BookingAvailableScheudle, new BookingWeeklyLimit]
         ]);
         if($validator->fails()){
@@ -84,9 +90,9 @@ class BookingController extends BaseController
         $finishingHour->addUnitNoOverflow('hour', 25, 'day');
         $finishingHour->subUnitNoOverflow('hour', 1, 'day');
 
-        //TODO implementar elseif para levantar los dos errores por diferente causa
-        // && Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0
-        if(Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->count() <= 1 && Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0){
+        $userHasBooked = Booking::where('user_id','=',$booking->user_id)->where('start_time','>=', $beginningHour)->where('end_time', '<=', $finishingHour)->where('id', '!=', $request->id)->count() >= 1;
+        $rangeAlreadyBooked = Booking::where('start_time', '<=', $booking->start_time)->where('end_time', '>=', $booking->end_time)->count() == 0;
+        if(!$userHasBooked || !$rangeAlreadyBooked){
             $booking->save();
             return $this->sendResponse(new BookingResource($booking), 'Reserva actualizada con éxito');
         }

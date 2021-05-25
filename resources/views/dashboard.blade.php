@@ -13,7 +13,7 @@
                     <div class="flex-auto text-2xl mb-4">Tu lista de reservas.</div>
 
                     <div class="flex-auto text-right mt-2">
-                        <a href="/booking" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Nueva reserva</a>
+                        <a href="/booking" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Nueva reserva</a>
                     </div>
                 </div>
                 <table class="w-full text-md rounded mb-4">

@@ -20,6 +20,7 @@
                         <span class="text-danger">{{ $errors->first('start_time') }}</span>
                         @endif
                     </div>
+                    <br>
                     <div class="form-group">
                         <label for="end_time">Hasta</label>
                         <input name="end_time"
@@ -29,7 +30,7 @@
                         <span class="text-danger">{{ $errors->first('end_time') }}</span>
                         @endif
                     </div>
-
+                    <br>
                     <div class="form-group">
                         <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add Booking</button>
                     </div>
